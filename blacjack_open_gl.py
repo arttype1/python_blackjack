@@ -22,6 +22,8 @@ version 005 separated out Deck and Card classes
 version 006 added card textures
 version 007 added buttons
 version 008 added dealer logic
+version 009 added replay
+version 010 a playable game
 """
 #################################################################################################
 #
@@ -39,6 +41,8 @@ import time
 screen_width = 1885
 screen_height = 1025
 cvs = Canvas(screen_width, screen_height, 'BlackJack')
+cvs.set_window(0, 1885, 0, 1025)
+cvs.set_viewport(0, 1885, 0, 1025)
 # offsets for card textures
 s_off = {'Spades': 3, 'Hearts': 2, 'Clubs': 0, 'Diamonds': 1}
 r_off = {'Two': 2, 'Three': 3, 'Four': 4, 'Five': 5, 'Six': 6, 'Seven': 7, 'Eight': 8,
@@ -47,7 +51,8 @@ r_off = {'Two': 2, 'Three': 3, 'Four': 4, 'Five': 5, 'Six': 6, 'Seven': 7, 'Eigh
 button_place_bet = Button((0.9, 0.6, 0.0), (1, 1, 0), 840, 310, 900, 348)
 button_hit = Button((0.0, 0.0, 0.0), (1, 1, 1), 100, 400, 300, 450)
 button_stay = Button((0.0, 0.0, 0.0), (1, 1, 1), 100, 300, 300, 350)
-
+button_up_bet = Button((0.0, 0.0, 0.0), (.6, .9, 0), 910, 410, 960, 460)
+button_down_bet = Button((0.0, 0.0, 0.0), (.9, .6, 0), 910, 330, 960, 380)
 chips_player = 200
 chips_dealer = 1000000
 
@@ -182,6 +187,10 @@ def draw_place_bet():
         draw_message((0.9, 0.6, 0.0), (800, 375), f'{bet}')
         button_place_bet.draw()
         draw_message((0, 0, 0),(845, 323), 'BET')
+        button_up_bet.draw()
+        draw_message((0, 0, 0), (915, 425), '+20  RAISE')
+        button_down_bet.draw()
+        draw_message((0, 0, 0), (915, 345), '-20  LOWER')
 
 
 def draw_player():
@@ -192,13 +201,28 @@ def draw_player():
 
 
 def draw_dealer():
+    draw_message((0, 0, 0), (125, 375), f'Dealer has the {hand_dealer[-1]}')
     button_stay.draw()
     draw_message((0, 0, 0), (170, 315), 'Next')
 
 
 def draw_play_again():
-    pass
-    pass
+    button_hit.draw()
+    draw_message((0, 0, 0), (170, 415), 'QUIT')
+    button_stay.draw()
+    draw_message((0, 0, 0), (170, 315), 'PLAY')
+    # 5 possible outcomes (player busts, dealer busts, dealer wins, player wins, tie)
+    if game_mode == 'busted':
+        draw_message((0, 0, 0), (150, 470), 'YOU BUST')
+    elif game_mode == 'lose':
+        draw_message((0, 0, 0), (150, 470), 'YOU LOSE')
+    elif game_mode == 'tie':
+        draw_message((0, 0, 0), (150, 470), 'It IS A TIE')
+    elif game_mode[0] == 'w':
+        if game_mode[-1] == '1':
+            draw_message((0, 0, 0), (20, 470), 'DEALER BUSTS -')
+        draw_message((0, 0, 0), (225, 470), 'YOU WIN')
+        pass
 
 
 def draw_cards():
@@ -228,6 +252,9 @@ def my_mouse(button, state, x, neg_y):
     y  = screen_height - neg_y
     global game_mode
     global chips_dealer, chips_player
+    global hand_dealer, hand_player
+    global my_deck
+    global bet
     if game_mode == 'start':
         game_mode = 'bet'
     elif game_mode == 'bet':
@@ -237,6 +264,15 @@ def my_mouse(button, state, x, neg_y):
             hand_player.append(my_deck.cards.pop())
             hand_player.append(my_deck.cards.pop())
             hand_dealer.append(my_deck.cards.pop())
+        elif button == GLUT_LEFT_BUTTON and state == GLUT_DOWN and \
+                button_up_bet.is_inside(x, y):
+            bet += 20
+        elif button == GLUT_LEFT_BUTTON and state == GLUT_DOWN and \
+                button_down_bet.is_inside(x, y):
+            bet -= 20
+        bet = max(bet, 20)
+        bet = min(bet, chips_player, chips_dealer)
+
     elif game_mode == 'player':
         if button == GLUT_LEFT_BUTTON and state == GLUT_DOWN and \
                 button_hit.is_inside(x, y):
@@ -253,32 +289,46 @@ def my_mouse(button, state, x, neg_y):
         if button == GLUT_LEFT_BUTTON and state == GLUT_DOWN and \
                 button_stay.is_inside(x, y):
             total = find_total(hand_dealer)
-            if total < min(17, find_total(hand_player)):
+            if total < min(17, find_total(hand_player) + 1):
                 hand_dealer.append(my_deck.cards.pop())
             else:
                 if total > 21:
                     # print('Dealer busts!')
+                    game_mode = 'win1'
                     chips_player += bet
                     chips_dealer -= bet
                 elif total > find_total(hand_player):
                     # print(f'Dealer wins with {total}')
+                    game_mode ='lose'
                     chips_player -= bet
                     chips_dealer += bet
                 elif find_total(hand_player) == total:
                     # print('it is a tie')
-                    pass
+                    game_mode = 'tie'
                 else:
                     # print(f'Dealer loses with {total}')
+                    game_mode = 'win0'
                     chips_player += bet
                     chips_dealer -= bet
-                game_mode ='play again'
+    else:  # play again section#
+        if button == GLUT_LEFT_BUTTON and state == GLUT_DOWN and \
+                button_hit.is_inside(x, y):
+            quit()
+        elif button == GLUT_LEFT_BUTTON and state == GLUT_DOWN and \
+                button_stay.is_inside(x, y):
+            # reset hands and deck
+            hand_player = []
+            hand_dealer = []
+            if len(my_deck.cards) <= 10:
+                my_deck = Deck()
+                my_deck.shuffle()
+            game_mode = 'bet'
+
 
 
 def my_display():
     global cvs
     global game_mode
-    cvs.set_window(0, 1885, 0, 1025)
-    cvs.set_viewport(0, 1885, 0, 1025)
     if game_mode == 'start':
         draw_start()
     else:
