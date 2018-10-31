@@ -263,6 +263,8 @@ def my_mouse(button, state, x, neg_y):
             game_mode = 'player'
             hand_player.append(my_deck.cards.pop())
             hand_player.append(my_deck.cards.pop())
+            if find_total(hand_player) == 21:
+                game_mode = 'win0'
             hand_dealer.append(my_deck.cards.pop())
         elif button == GLUT_LEFT_BUTTON and state == GLUT_DOWN and \
                 button_up_bet.is_inside(x, y):
@@ -289,7 +291,7 @@ def my_mouse(button, state, x, neg_y):
         if button == GLUT_LEFT_BUTTON and state == GLUT_DOWN and \
                 button_stay.is_inside(x, y):
             total = find_total(hand_dealer)
-            if total < min(17, find_total(hand_player) + 1):
+            if total < 17:
                 hand_dealer.append(my_deck.cards.pop())
             else:
                 if total > 21:
