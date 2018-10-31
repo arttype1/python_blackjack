@@ -85,9 +85,19 @@ def main():
             if len(hand_player) <= 1:
                 hand_player.append(my_Deck.cards.pop())
                 hand_player.append(my_Deck.cards.pop())
+                if find_total(hand_player) == 21:
+                    print('your hand:')
+                    for item in hand_player:
+                        print(item)
+                    print('You got a natural 21, you win')
+                    chips_player += bet
+                    chips_dealer -= bet
+                    need_input = False
+                    turn = 'gameover'
+                    break
             need_input = True
             while need_input:
-                print('your hsnd:')
+                print('your hand:')
                 for item in hand_player:
                     print(item)
                 total = find_total(hand_player)
@@ -100,6 +110,7 @@ def main():
                 if find_total(hand_player) >= 22:
                     print('You busted!, you lost {str(bet)} chips')
                     chips_player -= bet
+                    chips_dealer += bet
                     need_input = False
             turn = 'dealer'
             total_player = find_total(hand_player)
@@ -108,7 +119,7 @@ def main():
             else:
                 print('Dealers Turn.')
                 total = find_total(hand_dealer)
-                while total < min(17, total_player):
+                while total < 17:
                     hand_dealer.append(my_Deck.cards.pop())
                     total = find_total(hand_dealer)
                     print (f'Dealer gets {hand_dealer[-1]}')
@@ -134,7 +145,7 @@ def main():
             print('Thanks for playing')
         elif chips_player <= 0:
             play_again = False
-            print('Your broke, go home.')
+            print('You are broke, go home.')
         elif chips_dealer <=200:
             play_again = False
             print('You took too much of our money already!!!')
